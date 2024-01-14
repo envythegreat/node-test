@@ -1,6 +1,6 @@
 // src/models/User.model.ts
 // src/models/User.model.ts
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 

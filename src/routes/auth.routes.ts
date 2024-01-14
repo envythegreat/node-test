@@ -1,11 +1,14 @@
 // src/routes/auth.routes.ts
-import express, { Request, Response } from 'express';
-import { prisma } from '../models/db';
-import { generateAccessToken, generateRefreshToken } from '../services/token.service';
+import express, { Request, Response } from "express";
+import { prisma } from "../models/db";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../services/token.service";
 
 const router = express.Router();
 
-router.post('/login', async (req: Request, res: Response) => {
+router.post("/login", async (req: Request, res: Response) => {
   try {
     const { username, password, region, box } = req.body;
 
@@ -19,22 +22,22 @@ router.post('/login', async (req: Request, res: Response) => {
     });
 
     if (user) {
-      const accessToken = generateAccessToken({ username: user.username, type: user.box });
-      const refreshToken = generateRefreshToken();
+      const accessToken = generateAccessToken({ id: user.id });
+      const refreshToken = generateRefreshToken({ id: user.id });
 
       // Update user record with tokens
       await prisma.user.update({
         where: { id: user.id },
-        data: { accessToken, refreshToken },
+        data: { refreshToken },
       });
 
       res.json({ accessToken, refreshToken });
     } else {
-      res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: "Invalid credentials" });
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

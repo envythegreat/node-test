@@ -1,46 +1,97 @@
 // src/middlewares/auth.middleware.ts
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { prisma } from '../models/db';
+import { Request, Response, NextFunction } from "express";
+import jwt, { JwtPayload } from "jsonwebtoken";
+import { prisma } from "../models/db";
 
-const verifyAccessToken = async (req: Request, res: Response, next: NextFunction) => {
+declare module "express-serve-static-core" {
+  interface Request {
+    payload?: any; // Replace 'any' with the specific type of your payload
+    user?: any;
+  }
+}
+
+export interface CustomRequest extends Request {
+  token: string | JwtPayload;
+}
+
+const verifyAccessToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const authorizationHeader = req.headers.authorization;
-    if (!authorizationHeader) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(403).json({ error: "Forrbidden" });
     }
 
-    const accessToken = authorizationHeader.split(' ')[1];
+    const [Bearer, token] = authHeader.split(" ");
 
-    const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET || '');
-    req.user = decoded;
-    next();
+    jwt.verify(
+      token,
+      process.env.ACCESS_TOKEN_SECRET_KEY as string,
+      (err, payload) => {
+        if (err) {
+          return res.status(403).json({ error: "Forrbidden" });
+        }
+
+        req.payload = payload;
+        next();
+      }
+    );
   } catch (error) {
-    console.error(error);
-    res.status(401).json({ error: 'Invalid token' });
+    res.status(401).json({ error: "Invalid token" });
   }
 };
 
-const verifyRefreshToken = async (req: Request, res: Response, next: NextFunction) => {
+const verifyRefreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const refreshToken = req.headers['x-refresh-token'] as string;
+    const authHeader = req.headers.authorization;
 
-    if (!refreshToken) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    if (!authHeader) {
+      return res.status(403).json({ error: "Forrbidden" });
     }
 
-    // Check if refresh token exists in the database
-    const user = await prisma.user.findFirst({ where: { refreshToken } });
+    const [Bearer, token] = authHeader.split(" ");
 
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid refresh token' });
-    }
+    jwt.verify(
+      token,
+      process.env.REFRESH_TOKEN_SECRET_KEY as string,
+      async (err, payload) => {
+        if (err) {
+          return res.status(403).json({ error: "Forrbidden" });
+        }
 
-    req.user = { id: user.id, username: user.username, type: user.type }; // Add user information to the request
-    next();
+        console.log("this is payload", payload);
+
+        const payloadId = payload || 0;
+
+        const user = await prisma.user.findFirst({
+          where: { id: Number(payloadId) },
+          select: {
+            refreshToken: true,
+          },
+        });
+
+        if (!user) {
+          return res.status(403).json({ error: "Forrbidden" });
+        }
+
+        if (user.refreshToken !== token) {
+          return res.status(403).json({ error: "Forrbidden" });
+        }
+
+        req.payload = payload;
+        next();
+      }
+    );
   } catch (error) {
-    console.error(error);
-    res.status(401).json({ error: 'Invalid refresh token' });
+    res.status(401).json({ error: "Invalid token" });
   }
 };
 

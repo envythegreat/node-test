@@ -1,14 +1,14 @@
 // src/services/token.service.ts
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import jwt from "jsonwebtoken";
 
-const generateAccessToken = (payload: object): string => {
-  const secretKey = process.env.ACCESS_TOKEN_SECRET || '';
-  return jwt.sign(payload, secretKey, { expiresIn: '15m' });
-};
+const generateAccessToken = (payload: object): string =>
+  jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET_KEY || "", {
+    expiresIn: "1d",
+  });
 
-const generateRefreshToken = (): string => {
-  return crypto.randomBytes(32).toString('hex');
-};
+const generateRefreshToken = (payload: object): string =>
+  jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET_KEY || "", {
+    expiresIn: "7d",
+  });
 
 export { generateAccessToken, generateRefreshToken };
